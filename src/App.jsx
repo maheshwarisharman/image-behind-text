@@ -17,44 +17,69 @@ const BackgroundRemover = () => {
   const [isLoading, setLoader] = useState(false);
 
 
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
 
   const canvasRef = useRef(null);
 
-  const genAI = new GoogleGenerativeAI('AIzaSyAp4x89gg-5zsPDU7w3yoDkSy9Q1S-gaPY');
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" , generationConfig: {"response_mime_type": "application/json"}});
+  const genAI = new GoogleGenerativeAI(apiKey);
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" , generationConfig: {"response_mime_type": "application/json"}});
 
   const handleImageUpload = (event) => {
 
     setLoader(true);
     const file = event.target.files[0];
+    
     if (file) {
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+
+      let width = "0";
+      let height = "0"
+
+      img.onload = () => {
+      width = img.width
+      height = img.height
+    }
+ 
+
       const reader = new FileReader();
       console.log("HHEJEJEJE");
       reader.onloadend = async () => {
 
         
-        const prompt = `Given an image and a text string, determine the best large font size and optimal placement (x, y) for visually impactful text overlay. The text should be prominent and bold, occupying a significant portion of the image while ensuring readability and aesthetic balance. Consider the following:
+        const prompt = `
+
+Given an image and a text string, determine the best font size and placement (x, y) for optimal readability and aesthetic appeal. Consider the following:
+
+the text is ${text}
+
+The TEXT will go behind the main subject or the main object and in front of the background. So basically the Text will be in between background and subject.
+
+Resolution of the Image: ${width} x ${height} px
 
 Font Size:
 
-The text should be very large, taking up 30-50% of the image width depending on the text length.
-Prioritize bold and eye-catching text similar to modern posters and magazine covers.
-Ensure scalability—adjust for different image resolutions.
+The text should be very large, taking up 100-120% of the image width depending on the text length.
+
 Placement (x, y):
+DO NOT GIVE ANY NEGATIVE and 0 VALUES
+Position the Text on Top of the subject so that it only goes slightly behind the subject
+Align the text based Centred for the symmetry.
+Center the text horizontally, and adjust vertically to fit the empty or less busy areas of the background.
+IMPORTANT: make sure text is only 95% visible and rest is set behind the image
 
-Center the text for maximum attention OR place it in a visually balanced area based on background elements.
-The text should not be pushed to the corners unless necessary.
-Styling Considerations:
+CENTER THE TEXT HORIZONTALLY.
 
-Ensure strong contrast between the text and background for high readability.
-Allow for slight overlap with subjects if it enhances the composition.
-Use dynamic positioning (top, middle, or bottom) depending on the image structure.
-Return the font size , x-coordinate, and y-coordinate in a strictly structured JSON object  format just like this:
-IMPORTANT: The output should be a JSON array
+Cordinates Parameter:
+Remember x coordinate and y coordinate which you mention, the text will start from there.
+
+IMPORTANT: The output should be a JSON object
 {
   "font_size": 120,
   "x": 100,
-  "y": 250
+  "y": 250,
+  "color": #ffffff
       }
   
 `;
@@ -65,10 +90,14 @@ IMPORTANT: The output should be a JSON array
      mimeType: "image/jpg",
    },
  };
- 
+
+
+
  const result = await model.generateContent([prompt, image]);
  let res = JSON.parse(((result.response.text())));
  console.log(res);
+
+
  setFontSize(res.font_size.toString() + "px" || "50px");
  setXAxis(Number(res.x));
  setYAxis(Number(res.y));
@@ -116,7 +145,7 @@ IMPORTANT: The output should be a JSON array
         ctx.drawImage(originalImg, 0, 0);
         
         ctx.font = `bold ${fontsize} Helvetica`;
-        ctx.fillStyle = "rgb(255, 255, 255)";
+        ctx.fillStyle = "#ffffff";
         ctx.fillText(text, xaxis, yaxis);
         
         removedBgImg.onload = () => {
@@ -126,6 +155,10 @@ IMPORTANT: The output should be a JSON array
     }
   }, [image, processedImage, text, xaxis, yaxis, fontsize]);
 
+  const changeSize = () => {
+    setFontSize("200px")
+  }
+ 
   return (
     <div>
     {isLoading ? <div>Loading </div> : ( <div className="flex flex-col items-center p-4 bg-gray-100 min-h-screen">
@@ -157,6 +190,8 @@ IMPORTANT: The output should be a JSON array
           className="w-full cursor-pointer"
         />
       </div>
+
+      <button onClick={changeSize}>CCCC</button>
 
       {/* Y-Axis Slider */}
       <div className="w-full max-w-md">
